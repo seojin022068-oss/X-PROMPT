@@ -158,14 +158,18 @@
   body.entering.leaving #enterT{opacity:0;transform:translate(-50%,-50%) translateY(-8px);transition:opacity .45s ease, transform .6s var(--ease)}
   body.entering .ui, body.entering .floor{opacity:0;transition:opacity .5s}
 
-  @media (max-width:640px){
-    .top{left:16px;right:16px;top:14px;font-size:11px}
-    .bottom{left:16px;right:16px;bottom:14px;flex-direction:column-reverse;align-items:flex-start;gap:10px}
-  }
+  /* 세로로 든 휴대폰: 책 사이트들과 똑같이 화면 전체를 90° 돌려 가로로 보여 줌 */
+  #root{position:fixed;left:0;top:0;width:var(--rw,100vw);height:var(--rh,100vh);overflow:hidden}
+  body.rot #root{transform-origin:0 0;transform:translateX(var(--sw)) rotate(90deg)}
+
+  body.narrow .top{left:16px;right:16px;top:14px;font-size:11px}
+  body.narrow .bottom{left:16px;right:16px;bottom:14px;flex-direction:column-reverse;align-items:flex-start;gap:10px}
+  body.rot .bottom{flex-direction:row;align-items:center;bottom:10px} body.rot .top{top:10px}
+  body.rot .btns button{padding:5px 12px}
 </style>
 </head>
 <body>
-
+<div id="root">
 <div class="ui">
   <div class="top">
     <div>Prompt Edition</div>
@@ -194,6 +198,7 @@
 <canvas id="wash"></canvas>
 <div id="enterT"></div>
 <div id="cur" aria-hidden="true"><div class="halo"></div><div class="dot"></div></div>
+</div>
 
 <script src="js/matter.min.js"></script>
 <script>
@@ -226,13 +231,26 @@
   /* ---------- 화면 / 물리 세팅 ---------- */
   const stage = document.getElementById('stage');
   const floorEl = document.getElementById('floor');
+  // 화면 방향: 휴대폰을 세로로 들면 #root 를 돌려 가로 화면으로 (책 사이트와 같은 규칙)
+  let ROT = false, RW = innerWidth, RH = innerHeight;
+  function orient() {
+    const coarse = matchMedia('(pointer:coarse)').matches;
+    ROT = coarse && innerHeight > innerWidth && Math.min(innerWidth, innerHeight) < 600;
+    RW = ROT ? innerHeight : innerWidth; RH = ROT ? innerWidth : innerHeight;
+    const r = document.documentElement.style;
+    r.setProperty('--rw', RW + 'px'); r.setProperty('--rh', RH + 'px'); r.setProperty('--sw', innerWidth + 'px');
+    document.body.classList.toggle('rot', ROT);
+    document.body.classList.toggle('narrow', RW < 700);
+  }
+  // 화면(손가락·마우스) 좌표 → 돌린 화면 안의 좌표
+  const toRoot = (x, y) => ROT ? { x: y, y: innerWidth - x } : { x, y };
   // 장면 안의 좌표 (항상 같음) — 화면에는 s배로 줄이거나 키워서 보여 줌
   const DW = 1440, DH = 760, vw = DW, vh = DH, k = 1.15, floorY = 726;
   const appEl = document.getElementById('app');
   let engine, mc, books = [], homes = [], s = 1, ax = 0, ay = 0;
 
   function layoutScale() {
-    const W = innerWidth, H = innerHeight;
+    const W = RW, H = RH;
     const bigBtns = W >= 900 && matchMedia('(pointer:fine)').matches;
     const topPad = W < 700 ? 36 : 48, botPad = bigBtns ? 104 : (W < 700 || H < 500 ? 56 : 64);
     s = Math.min(W / DW, (H - topPad - botPad) / DH);
@@ -240,10 +258,9 @@
     ay = topPad + ((H - topPad - botPad) - DH * s) / 2;
     appEl.style.transform = `translate(${ax}px, ${ay}px) scale(${s})`;
     floorEl.style.top = (ay + floorY * s) + 'px';
-    if (mc) Mouse.setScale(mc.mouse, { x: 1 / s, y: 1 / s });
   }
   // 화면 좌표 → 장면 좌표
-  const toScene = (x, y) => ({ x: (x - ax) / s, y: (y - ay) / s });
+  const toScene = (x, y) => { const q = toRoot(x, y); return { x: (q.x - ax) / s, y: (q.y - ay) / s }; };
 
   function makeFace(cls, w, x, transform, inner = '') {
     const f = document.createElement('div');
@@ -332,13 +349,13 @@
     ];
     Composite.add(engine.world, [...statics, ...books.map(b => b.body)]);
 
-    const mouse = Mouse.create(stage);
-    mouse.pixelRatio = 1;
-    Mouse.setScale(mouse, { x: 1 / s, y: 1 / s });
-    // 휠 스크롤을 막지 않도록
-    mouse.element.removeEventListener('wheel', mouse.mousewheel);
-    mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
-    mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
+    // Matter 기본 마우스는 돌린 화면을 모르므로, 이벤트는 직접 받아 장면 좌표로 넣어 줌
+    const mouse = Mouse.create(document.createElement('div'));
+    const setPos = e => { const q = toScene(e.clientX, e.clientY);
+      mouse.absolute.x = mouse.position.x = q.x; mouse.absolute.y = mouse.position.y = q.y; };
+    stage.onpointermove = e => setPos(e);
+    stage.onpointerdown = e => { setPos(e); mouse.button = 0; mouse.mousedownPosition = { ...mouse.position }; };
+    window.onpointerup = window.onpointercancel = e => { setPos(e); mouse.button = -1; mouse.mouseupPosition = { ...mouse.position }; };
     mc = MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.18, damping: 0.1 } });
     Composite.add(engine.world, mc);
 
@@ -473,18 +490,20 @@
     document.getElementById('enterT').textContent = d.title;
 
     // 1) 돌아간 표지를 떼어 내 화면 가운데로 끌어당김
-    const r = b.coverF.getBoundingClientRect();
+    // 돌아간 표지의 자리 (돌린 화면 좌표)
+    const r = { width: b.W * s, height: b.H * s };
+    r.left = ax + b.body.position.x * s - r.width / 2; r.top = ay + b.body.position.y * s - r.height / 2;
     flyImg.src = d.cover;
     Object.assign(flyEl.style, { display: 'block', width: r.width + 'px', height: r.height + 'px' });
     b.el.style.visibility = 'hidden';
-    const SW = innerWidth, SH = innerHeight;
+    const SW = RW, SH = RH;
     const tH = Math.min(SH * .62, SW * .62 / .708), tW = tH * .708;
     const to = { x: (SW - tW) / 2, y: (SH - tH) / 2 - SH * .02, s: tW / r.width };
 
     // 나머지 책들은 바람에 밀리듯 흩어짐
     books.forEach(o => {
       if (o === b) return;
-      const dx = o.body.position.x - toScene(r.left + r.width / 2, 0).x;
+      const dx = o.body.position.x - b.body.position.x;
       Body.setVelocity(o.body, { x: Math.sign(dx) * (4 + Math.random() * 6), y: -4 - Math.random() * 8 });
       Body.setAngularVelocity(o.body, Math.sign(dx) * (.08 + Math.random() * .2));
     });
@@ -615,16 +634,18 @@
   if (fine) document.documentElement.classList.add('cc');
   addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse') return;
-    cur.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; cur.classList.add('on');
+    const q = toRoot(e.clientX, e.clientY);
+    cur.style.transform = `translate(${q.x}px,${q.y}px)`; cur.classList.add('on');
     const overBtn = e.target.closest && e.target.closest('button, a');
     cur.classList.toggle('hover', !!overBtn || (!!hovered && !entering));
   }, { passive: true });
   document.addEventListener('mouseleave', () => cur.classList.remove('on'));
   const spawn = (cls, x, y) => { const r = document.createElement('div'); r.className = cls; r.style.left = x + 'px'; r.style.top = y + 'px';
-    document.body.append(r); r.addEventListener('animationend', () => r.remove()); };
+    document.getElementById('root').append(r); r.addEventListener('animationend', () => r.remove()); };
   addEventListener('pointerdown', e => {
-    spawn('ripple', e.clientX, e.clientY);
-    if (e.pointerType === 'mouse') cur.classList.add('down'); else spawn('tdot', e.clientX, e.clientY);
+    const q = toRoot(e.clientX, e.clientY);
+    spawn('ripple', q.x, q.y);
+    if (e.pointerType === 'mouse') cur.classList.add('down'); else spawn('tdot', q.x, q.y);
   }, { passive: true });
   addEventListener('pointerup', () => cur.classList.remove('down'));
 
@@ -634,12 +655,13 @@
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ACC = [[239,189,214],[223,189,239],[189,206,239],[189,239,235],[189,239,206],[239,223,189]];
     const S = 6; let W, H;
-    function size() { W = Math.ceil(innerWidth / S); H = Math.ceil(innerHeight / S); cv.width = W; cv.height = H; }
-    size(); addEventListener('resize', size);
-    const m = { x: innerWidth * .6, y: innerHeight * .4 }; let travel = 0, last = null;
+    function size() { W = Math.ceil(RW / S); H = Math.ceil(RH / S); cv.width = W; cv.height = H; }
+    size(); addEventListener('resize', () => setTimeout(size, 0));
+    const m = { x: RW * .6, y: RH * .4 }; let travel = 0, last = null;
     addEventListener('pointermove', e => {
-      if (last) travel += Math.hypot(e.clientX - last.x, e.clientY - last.y);
-      last = { x: e.clientX, y: e.clientY }; m.x = e.clientX; m.y = e.clientY;
+      const q = toRoot(e.clientX, e.clientY);
+      if (last) travel += Math.hypot(q.x - last.x, q.y - last.y);
+      last = q; m.x = q.x; m.y = q.y;
     }, { passive: true });
     const blobs = [{ k: .08, d: .82, r: .30 }, { k: .035, d: .88, r: .42 }].map(b => ({ ...b, x: m.x, y: m.y, vx: 0, vy: 0 }));
     const mix = t => { const n = ACC.length, i = ((Math.floor(t) % n) + n) % n, j = (i + 1) % n, f = t - Math.floor(t); return ACC[i].map((v, k) => Math.round(v + (ACC[j][k] - v) * f)); };
@@ -651,7 +673,7 @@
       const hb = hovered && hovered.pub ? hovered.data : null;
       if (hb) bookTint = hb;
       tintAmt += ((hb ? 1 : 0) - tintAmt) * .06;
-      const hue = (m.x / innerWidth) * 2.5 + travel / 900;
+      const hue = (m.x / RW) * 2.5 + travel / 900;
       blobs.forEach((b, i) => {
         b.vx = (b.vx + (m.x - b.x) * b.k) * b.d; b.vy = (b.vy + (m.y - b.y) * b.k) * b.d; b.x += b.vx; b.y += b.vy;
         let c = mix(hue + i * 1.3);
@@ -659,7 +681,7 @@
           const bc = bookTint.colors[(Math.floor(travel / 300) + i) % 3];
           c = c.map((v, k) => Math.round(v + (bc[k] - v) * tintAmt));
         }
-        const R = Math.min(innerWidth, innerHeight) * b.r / S;
+        const R = Math.min(RW, RH) * b.r / S;
         const g = ctx.createRadialGradient(b.x / S, b.y / S, 0, b.x / S, b.y / S, R);
         g.addColorStop(0, `rgba(${c.join(',')},.14)`); g.addColorStop(1, `rgba(${c.join(',')},0)`);
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x / S, b.y / S, R, 0, Math.PI * 2); ctx.fill();
@@ -671,7 +693,8 @@
 
   let rt;
   // 회전·창 크기 변경: 장면은 그대로 두고 크기만 다시 맞춤
-  addEventListener('resize', () => { layoutScale(); clearTimeout(rt); rt = setTimeout(layoutScale, 300); });
+  addEventListener('resize', () => { orient(); layoutScale(); clearTimeout(rt); rt = setTimeout(() => { orient(); layoutScale(); }, 300); });
+  orient();
   layoutScale();
   init();
   requestAnimationFrame(frame);
