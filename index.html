@@ -97,20 +97,20 @@
     content:"";position:absolute;inset:0;background:#000;
     opacity:var(--shade,0);pointer-events:none;
   }
-  .spine{background:#111}
+  .spine{background:#414141}
   .spine .txt{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     writing-mode:vertical-rl;
     font-size:9.1px;font-weight:400;letter-spacing:.3em;color:rgba(255,255,255,.48);
   }
   .spine .rule{position:absolute;left:22%;right:22%;height:1px;background:rgba(255,255,255,.18)}
-  .cover{background:#111}
+  .cover{background:#414141}
   .cover .ctxt{
     position:absolute;inset:0;padding:18px 16px;color:#fff;
     display:flex;flex-direction:column;justify-content:space-between;
   }
   .cover .ctxt small{font-size:9.1px;letter-spacing:.28em;color:rgba(255,255,255,.6)}
-  .back{background:#0b0b0b}
+  .back{background:#3c3c3c}
   .back.pub{background:#ddd}
   .pages{background:repeating-linear-gradient(90deg,#f4f2ee 0 1px,#e3e0da 1px 2px)}
 
@@ -220,7 +220,7 @@
   const blacks = Array.from({ length: 22 }, (_, i) => {
     const H = 236 + Math.round(rnd() * 100);
     return { T: 26 + Math.round(rnd() * 32), H, W: H * 0.7, label: LABELS[i % LABELS.length],
-      tone: ['#111', '#161616', '#0c0c0c', '#1b1b1b'][i % 4] };
+      tone: ['#414141', '#454545', '#3d3d3d', '#494949'][i % 4] };
   });
 
   /* ---------- 화면 / 물리 세팅 ---------- */
