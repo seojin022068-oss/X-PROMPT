@@ -65,6 +65,12 @@
     padding:6px 14px;cursor:pointer;transition:.2s;
   }
   .btns button:hover{background:#111;color:#fff}
+  /* PC: 버튼 2배 */
+  @media (min-width:900px) and (pointer:fine){
+    .btns{gap:12px}
+    .btns button{font-size:24px;padding:12px 28px;border-width:1.5px}
+    .bottom{font-size:15px;bottom:22px}
+  }
 
   .floor{position:fixed;left:0;right:0;height:1px;background:#111;z-index:0}
 
@@ -227,7 +233,8 @@
 
   function layoutScale() {
     const W = innerWidth, H = innerHeight;
-    const topPad = W < 700 ? 36 : 48, botPad = W < 700 || H < 500 ? 56 : 64;
+    const bigBtns = W >= 900 && matchMedia('(pointer:fine)').matches;
+    const topPad = W < 700 ? 36 : 48, botPad = bigBtns ? 104 : (W < 700 || H < 500 ? 56 : 64);
     s = Math.min(W / DW, (H - topPad - botPad) / DH);
     ax = (W - DW * s) / 2;
     ay = topPad + ((H - topPad - botPad) - DH * s) / 2;
@@ -453,14 +460,15 @@
   });
 
   /* ---------- 책 안으로 들어가기 ---------- */
-  let entering = false;
+  let entering = false, gen = 0, enterAt = 0;   // gen: 뒤로 가기로 돌아오면 바뀌어서 남은 전환 애니메이션을 멈춤
   const flyEl = document.getElementById('fly'), flyImg = flyEl.querySelector('img');
   const wash = document.getElementById('wash'), wctx = wash.getContext('2d');
   const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   function enter(b) {
     if (entering) return;
-    entering = true; hovered = null;
+    entering = true; hovered = null; enterAt = performance.now();
+    const myGen = ++gen;
     const d = b.data;
     document.getElementById('enterT').textContent = d.title;
 
@@ -492,6 +500,7 @@
     const t0 = performance.now();
     document.body.classList.add('entering');
     (function step(now) {
+      if (myGen !== gen) return;
       const t = (now - t0) / 1000;
       // 표지 이동 (0 → 0.75s)
       const p = easeIO(Math.min(1, t / .75));
@@ -529,12 +538,22 @@
     })(t0);
   }
 
-  // 뒤로 가기로 돌아왔을 때 원래 화면으로
-  addEventListener('pageshow', e => {
-    if (!e.persisted) return;
-    entering = false; document.body.classList.remove('entering', 'leaving'); document.body.style.background = '';
-    flyEl.style.display = 'none'; wctx.clearRect(0, 0, wash.width, wash.height);
+  // 뒤로 가기로 돌아왔을 때: 전환을 멈추고 처음 화면(책이 위에서 내려와 꽂히는 장면)으로
+  function resetAfterBack() {
+    gen++;
+    entering = false;
+    document.body.classList.remove('entering', 'leaving');
+    document.body.style.background = '';
+    flyEl.style.display = 'none';
+    wctx.clearRect(0, 0, wash.width, wash.height);
+    wash.width = wash.width;   // 캔버스 완전히 비우기
+    layoutScale();
     init();
+  }
+  addEventListener('pageshow', e => { if (e.persisted || entering) resetAfterBack(); });
+  // 일부 앱 내 브라우저는 pageshow 대신 화면이 다시 보일 때만 알려 줌
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && entering && performance.now() - (enterAt || 0) > 4000) resetAfterBack();
   });
 
   /* ---------- 루프 ---------- */
