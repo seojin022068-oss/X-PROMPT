@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X PROMPT — 김주연 프롬프트 시리즈</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Noto+Serif+KR:wght@400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#b5ada4;
+    --ink:#1c1a18;
+    --k: min(1px, calc(100vw / 1300), calc(100vh / 860));
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Inter","Noto Serif KR",sans-serif;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+    min-height:100vh;
+  }
+  body::before{ /* 종이 질감 같은 미세한 노이즈 */
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.38  0 0 0 0 0.35  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* 상단 바 */
+  .top{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 26px 0;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  }
+  .top .count span{margin-left:8px;opacity:.45}
+  .top .count span.on{opacity:1}
+
+  /* 타이틀 */
+  .title{
+    text-align:center;
+    margin-top:calc(var(--k) * 34);
+    opacity:0;animation:fade 1.1s .1s ease forwards;
+  }
+  .title .eyebrow{
+    font-family:"Bodoni Moda",serif;
+    font-size:calc(var(--k) * 26);
+    letter-spacing:.02em;
+  }
+  .title .eyebrow sup{font-size:.55em;margin-left:2px}
+  .title h1{
+    font-family:"Bodoni Moda",serif;font-weight:400;
+    font-size:calc(var(--k) * 168);
+    line-height:.9;letter-spacing:.01em;white-space:nowrap;
+    margin-top:calc(var(--k) * 8);
+  }
+  .title p{
+    margin-top:calc(var(--k) * 14);
+    font-family:"Noto Serif KR",serif;
+    font-size:calc(var(--k) * 15);opacity:.7;letter-spacing:.04em;
+  }
+
+  /* 책장 */
+  .shelf-wrap{
+    flex:1;position:relative;
+    display:flex;align-items:flex-end;justify-content:center;
+    overflow:hidden;
+  }
+  .shelf{
+    display:flex;align-items:flex-end;gap:calc(var(--k) * 7);
+    padding-bottom:calc(var(--k) * 26);
+    white-space:nowrap;
+  }
+
+  .book{
+    position:relative;flex:0 0 auto;
+    transform:translateY(110%);
+    animation:rise .9s cubic-bezier(.2,.8,.2,1) forwards;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s;
+  }
+  .book.in{animation:none;transform:translateY(0)}
+
+  /* 공개 전 검정 책 */
+  .spine{
+    background:var(--c,#151413);
+    width:calc(var(--k) * var(--w));
+    height:calc(var(--k) * var(--h));
+    box-shadow:inset 2px 0 0 rgba(255,255,255,.05), inset -2px 0 0 rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center;
+    cursor:default;
+  }
+  .spine .s-txt{
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:"Bodoni Moda",serif;
+    font-size:calc(var(--k) * 12);letter-spacing:.22em;
+    color:rgba(255,255,255,.22);
+    text-transform:uppercase;
+  }
+  .spine .s-bar{
+    position:absolute;left:18%;right:18%;height:1px;background:rgba(255,255,255,.15);
+  }
+  .spine .s-bar.t{top:8%}
+  .spine .s-bar.b{bottom:8%}
+  .spine:hover{transform:translateY(calc(var(--k) * -8))}
+  .spine::after{
+    content:"COMING SOON";
+    position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);
+    font-size:10px;letter-spacing:.16em;color:var(--ink);
+    opacity:0;transition:.25s;pointer-events:none;
+  }
+  .spine:hover::after{opacity:.75;transform:translateX(-50%) translateY(0)}
+
+  /* 공개된 책: 표지가 보이게 세운 책 */
+  .cover{
+    display:block;text-decoration:none;
+    width:calc(var(--k) * 250);
+    height:calc(var(--k) * 353);
+    box-shadow:0 1px 0 rgba(0,0,0,.08), 6px 0 14px -8px rgba(0,0,0,.35);
+    overflow:hidden;background:#888;
+  }
+  .cover img{display:block;width:100%;height:100%;object-fit:cover}
+  .cover::before{ /* 책등 접힘선 */
+    content:"";position:absolute;top:0;bottom:0;left:calc(var(--k) * 10);width:1px;
+    background:rgba(255,255,255,.25);z-index:1;
+  }
+  .cover .c-open{
+    position:absolute;left:0;right:0;bottom:0;
+    padding:calc(var(--k) * 12) calc(var(--k) * 16);
+    display:flex;justify-content:space-between;
+    font-size:calc(var(--k) * 11);letter-spacing:.14em;color:#fff;
+    background:linear-gradient(transparent,rgba(0,0,0,.45));
+    opacity:0;transform:translateY(6px);transition:.3s;
+  }
+  .cover:hover{
+    transform:translateY(calc(var(--k) * -18));
+    box-shadow:0 22px 30px -18px rgba(0,0,0,.45), 6px 0 14px -8px rgba(0,0,0,.35);
+  }
+  .cover:hover .c-open{opacity:1;transform:none}
+  .cover:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+
+  /* 선반 */
+  .ledge{
+    position:absolute;left:0;right:0;bottom:0;height:calc(var(--k) * 26);
+    background:linear-gradient(#9d958b,#8c847a);
+    box-shadow:0 -1px 0 rgba(0,0,0,.15);
+  }
+
+  @keyframes rise{to{transform:translateY(0)}}
+  @keyframes fade{to{opacity:1}}
+
+  @media (prefers-reduced-motion:reduce){
+    .book,.title{animation:none!important;transform:none;opacity:1}
+  }
+  @media (max-width:640px){
+    .top{padding:14px 16px 0;font-size:10px}
+    :root{--k: min(1px, calc(100vw / 680), calc(100vh / 900))}
+    .title{margin-top:28px}
+    .title .eyebrow{font-size:15px}
+    .title h1{font-size:17.5vw}
+    .title p{font-size:12px}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>Kim Juyeon · Prompt Series</div>
+  <div class="count">Vol.<span class="on">1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span></div>
+</header>
+
+<section class="title">
+  <div class="eyebrow">SERIES<sup>01</sup></div>
+  <h1>X PROMPT</h1>
+  <p>공개된 책을 눌러 열람본으로 들어가세요</p>
+</section>
+
+<main class="shelf-wrap">
+  <div class="shelf" id="shelf"></div>
+  <div class="ledge"></div>
+</main>
+
+<script>
+  // 공개된 두 권 + 공개 전 검정 책들
+  const published = {
+    material: `
+      <a class="book cover" href="https://boo-three-beta.vercel.app" target="_blank" rel="noopener" aria-label="디자인과 재료 X 프롬프트 열람하기">
+        <img src="covers/material.jpg" alt="디자인과 재료 X 프롬프트 표지">
+        <span class="c-open"><span>VOL. 01</span><span>OPEN →</span></span>
+      </a>`,
+    interior: `
+      <a class="book cover" href="https://interior-case-prompt.vercel.app" target="_blank" rel="noopener" aria-label="실내건축사례분석 X 프롬프트 열람하기">
+        <img src="covers/interior.jpg" alt="실내건축사례분석 X 프롬프트 표지">
+        <span class="c-open"><span>VOL. 02</span><span>OPEN →</span></span>
+      </a>`
+  };
+
+  // [폭, 높이, 색, 책등 글자]
+  const left = [
+    [52,300,'#141312','X PROMPT'], [38,250,'#1b1a19',''], [64,320,'#0f0e0e','Vol. 07'],
+    [44,270,'#181716','X PROMPT'], [30,232,'#121111',''], [58,305,'#1d1c1b','Vol. 05'],
+    [40,282,'#0e0d0d','']
+  ];
+  const middle = [
+    [46,292,'#161514','X PROMPT'], [34,246,'#101010','Vol. 03']
+  ];
+  const right = [
+    [60,312,'#131212','Vol. 04'], [36,258,'#1a1918',''], [50,296,'#0f0f0e','X PROMPT'],
+    [42,236,'#171615',''], [66,326,'#121110','Vol. 06'], [34,270,'#1c1b1a',''],
+    [54,300,'#0d0d0c','X PROMPT']
+  ];
+
+  const spine = ([w,h,c,t]) => `
+    <div class="book spine" style="--w:${w};--h:${h};--c:${c}" aria-label="공개 예정">
+      <span class="s-bar t"></span>${t ? `<span class="s-txt">${t}</span>` : ''}<span class="s-bar b"></span>
+    </div>`;
+
+  const shelf = document.getElementById('shelf');
+  shelf.innerHTML =
+    left.map(spine).join('') +
+    published.material +
+    middle.map(spine).join('') +
+    published.interior +
+    right.map(spine).join('');
+
+  // 순서대로 올라오는 등장 애니메이션
+  [...shelf.children].forEach((el, i) => {
+    el.style.animationDelay = (0.25 + i * 0.045) + 's';
+    el.addEventListener('animationend', () => el.classList.add('in'), {once:true});
+  });
+</script>
+</body>
+</html>
