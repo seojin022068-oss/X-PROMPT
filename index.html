@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>X PROMPT — 김주연 프롬프트 시리즈</title>
+<title>X PROMPT — Prompt Edition</title>
+<meta name="description" content="X PROMPT · Prompt Edition — 디자인과 재료 X 프롬프트, 실내건축사례분석 X 프롬프트">
+<meta property="og:title" content="X PROMPT — Prompt Edition">
+<meta property="og:description" content="디자인과 재료 X 프롬프트 · 실내건축사례분석 X 프롬프트">
+<!-- 책 사이트를 미리 불러 두어 장면 전환 뒤 바로 열리게 -->
+<link rel="prefetch" href="https://boo-three-beta.vercel.app/">
+<link rel="prefetch" href="https://interior-case-prompt.vercel.app/">
+<script type="speculationrules">
+{"prerender":[{"urls":["https://boo-three-beta.vercel.app/","https://interior-case-prompt.vercel.app/"],"eagerness":"moderate"}],
+ "prefetch":[{"urls":["https://boo-three-beta.vercel.app/","https://interior-case-prompt.vercel.app/"],"eagerness":"immediate"}]}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -34,7 +44,7 @@
   .title .eyebrow{font-size:13px;font-weight:500;letter-spacing:.18em}
   .title h1{
     font-weight:700;letter-spacing:-.035em;line-height:.9;
-    font-size:min(15vw, 19vh);
+    font-size:min(10.5vw, 13.3vh);
     white-space:nowrap;
   }
   .title p{margin-top:2vh;font-size:13px;color:#888;font-weight:400}
@@ -135,6 +145,7 @@
     font-weight:500;font-size:clamp(22px,3.4vw,46px);letter-spacing:-.01em;color:#fff;white-space:nowrap;opacity:0;pointer-events:none;
     text-shadow:0 2px 24px rgba(50,60,90,.22);transition:opacity .7s ease .95s, transform 1s var(--ease) .95s}
   body.entering #enterT{opacity:1;transform:translate(-50%,-50%)}
+  body.entering.leaving #enterT{opacity:0;transform:translate(-50%,-50%) translateY(-8px);transition:opacity .45s ease, transform .6s var(--ease)}
   body.entering .ui, body.entering .floor{opacity:0;transition:opacity .5s}
 
   @media (max-width:640px){
@@ -148,7 +159,7 @@
 
 <div class="ui">
   <div class="top">
-    <div>김주연 · Prompt Series</div>
+    <div>Prompt Edition</div>
     <div class="vol">Vol.<span class="on">1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span></div>
   </div>
   <div class="title">
@@ -183,11 +194,11 @@
   const PUBLISHED = {
     material: { T: 340 * 53.86 / 728.5, H: 340, W: 340 * 515.9 / 728.5,
       spine: 'covers/material-spine.jpg', cover: 'covers/material.jpg',
-      url: 'https://boo-three-beta.vercel.app', label: '디자인과 재료 X 프롬프트 →', title: '디자인과 재료 X 프롬프트',
+      url: 'https://boo-three-beta.vercel.app/', label: '디자인과 재료 X 프롬프트 →', title: '디자인과 재료 X 프롬프트',
       colors: [[186,190,232],[168,214,226],[240,196,176]], base: [247,246,243] },
     interior: { T: 340 * 59.53 / 728.5, H: 340, W: 340 * 515.9 / 728.5,
       spine: 'covers/interior-spine.jpg', cover: 'covers/interior.jpg',
-      url: 'https://interior-case-prompt.vercel.app', label: '실내건축사례분석 X 프롬프트 →', title: '실내건축사례분석 X 프롬프트',
+      url: 'https://interior-case-prompt.vercel.app/', label: '실내건축사례분석 X 프롬프트 →', title: '실내건축사례분석 X 프롬프트',
       colors: [[240,190,212],[182,212,234],[212,214,224]], base: [244,240,243] }
   };
 
@@ -208,7 +219,9 @@
 
   function layoutScale() {
     vw = innerWidth; vh = innerHeight;
-    k = Math.max(0.55, Math.min(1, vw / 1150, (vh - 120) / 640));
+    k = vw < 640 && vh > vw
+      ? Math.max(0.55, Math.min(1, vw / 430, (vh - 280) / 560))   // 세로 휴대폰: 책을 크게, 권수는 줄여서
+      : Math.max(0.55, Math.min(1.25, vw / 1150, (vh - 120) / 640));
     floorY = vh - (vw < 640 ? 96 : 64);
   }
 
@@ -474,31 +487,39 @@
       flyEl.style.transform = `translate(${x}px,${y}px) scale(${sc}) perspective(900px) rotateY(${tilt}deg)`;
       flyEl.style.opacity = t < 1.05 ? 1 : Math.max(0, 1 - (t - 1.05) / .35);
 
-      // 색 번짐 (0.35 → 1.6s)
+      // 색 번짐 (0.35 → 1.6s) → 책 사이트 첫 화면 배경색으로 가라앉음 (1.6 → 2.25s)
       const w = Math.max(0, (t - .35) / 1.25);
+      const settle = easeIO(Math.min(1, Math.max(0, (t - 1.6) / .65)));
       wctx.clearRect(0, 0, W, H);
       const base = d.base;
+      wctx.globalAlpha = 1;
       wctx.fillStyle = `rgba(${base},${Math.min(1, Math.max(0, (w - .45) / .4))})`;
       wctx.fillRect(0, 0, W, H);
+      wctx.globalAlpha = 1 - settle;
       blobs.forEach(bl => {
         const q = easeIO(Math.min(1, Math.max(0, (w - bl.delay) / .8)));
         if (q <= 0) return;
-        const bx = cx + Math.cos(bl.a) * bl.dist * W * q, by = cy + Math.sin(bl.a) * bl.dist * H * q;
+        const drift = t * .25;   // 다 번진 뒤에도 천천히 흐름
+        const bx = cx + Math.cos(bl.a + drift) * bl.dist * W * q, by = cy + Math.sin(bl.a + drift) * bl.dist * H * q;
         const R = maxR * bl.size * q + 4;
         const g = wctx.createRadialGradient(bx, by, 0, bx, by, R);
         g.addColorStop(0, `rgba(${bl.c},.95)`); g.addColorStop(.6, `rgba(${bl.c},.55)`); g.addColorStop(1, `rgba(${bl.c},0)`);
         wctx.fillStyle = g; wctx.beginPath(); wctx.arc(bx, by, R, 0, Math.PI * 2); wctx.fill();
       });
+      wctx.globalAlpha = 1;
+      if (t > 1.55) document.body.classList.add('leaving');
+      // 아래 화면도 같은 바탕색으로 덮어 두어 이동하는 순간 비치지 않게
+      if (t > 1.2) document.body.style.background = `rgb(${base})`;
 
-      if (t < 2.3) requestAnimationFrame(step);
-      else location.href = d.url;   // 같은 창에서 이어지게
+      if (t >= 2.25 && !step.went) { step.went = true; location.href = d.url; }
+      if (t < 8) requestAnimationFrame(step);   // 다음 페이지가 뜰 때까지 멈추지 않음
     })(t0);
   }
 
   // 뒤로 가기로 돌아왔을 때 원래 화면으로
   addEventListener('pageshow', e => {
     if (!e.persisted) return;
-    entering = false; document.body.classList.remove('entering');
+    entering = false; document.body.classList.remove('entering', 'leaving'); document.body.style.background = '';
     flyEl.style.display = 'none'; wctx.clearRect(0, 0, wash.width, wash.height);
     init();
   });
